@@ -28,12 +28,16 @@ impl HttpResponse {
         let trimmed_path = current_path.trim_start_matches('/');
         let rootcwd = std::env::current_dir()?;
         let rootcwd_canonical = rootcwd.canonicalize()?;
-        let new_path = rootcwd.join(trimmed_path);
+        let mut new_path = rootcwd.join(trimmed_path);
         let new_path_canonical = new_path.canonicalize()?;
 
         // Calculate depth
         let rootcwd_len = rootcwd_canonical.components().count();
         let new_path_len = new_path_canonical.components().count();
+
+        if rootcwd_len >= new_path_len {
+            new_path = rootcwd.clone();
+        }
 
         let mut response_body = Vec::new();
 
@@ -76,7 +80,7 @@ impl HttpResponse {
                 listing.extend_from_slice(b"</p>");
 
                 // Option to go up one directory shown only if not at root directory
-                if rootcwd_canonical != new_path_canonical {
+                if rootcwd_len < new_path_len {
                     let parent_path = new_path.parent().unwrap_or(&rootcwd).to_path_buf();
                     let parent_path_str = parent_path.to_str().unwrap_or("");
                     let parent_encoded = encode(parent_path_str, NON_ALPHANUMERIC).into_owned();
